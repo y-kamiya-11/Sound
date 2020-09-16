@@ -1,0 +1,334 @@
+﻿<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />   	
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0">
+    <link rel="stylesheet" href="StyleSheet1.css">
+    <title>Sound_Wireframe1</title>
+     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script> 
+        <!--jQueryの読み込みの後に、以下のコードを追加 -->
+    <script>
+
+        $(function() {
+
+            const noSound = 1;
+            var numberTrackActive = 0;
+
+            var hsize;
+            var wsize;
+            var time=0;
+            var timeName = ["MORNING", "NOON", "EVENING", "NIGHT"];
+            var soundFile = ["Car", "Bar", "Car", "Bar"];
+            var soundbuffer;
+            var sp;
+            var trackbuffer = new Array(64).fill(0);
+            var panelOn = new Array(16).fill(0);
+            var firstTrigger = 0;
+            var setUpFinish = 0;
+            var loadFinish = 0;
+
+            var timerId = setInterval(findTargetElement, 300);
+
+            window.AudioContext = window.AudioContext || window.webkitAudioContext;
+            var context = new AudioContext();
+
+            setUp();
+
+            //setUpとloadの両方が終わったときの処理
+            function findTargetElement(){
+            if(setUpFinish>=1 /*&& loadFinish>=1*/){
+                //処理を書く
+                const spinner = document.getElementById('loading');
+                spinner.classList.add('loaded');
+                clearInterval(timerId);
+            }
+            }
+
+            //loadが終わった時の処理
+            window.addEventListener('load', (event) => {
+                loadFinish=1;
+            });
+
+            //音源をロードする関数
+            function loadDogSound(url, i) {
+                var request = new XMLHttpRequest();
+                request.open('GET', url, true);
+                request.responseType = 'arraybuffer';
+
+                // Decode asynchronously
+                request.onload = function() {
+                    context.decodeAudioData(request.response, function(buffer) {
+                        trackbuffer[i] = buffer;
+                    });
+                }
+                request.send();
+            }
+
+            //初めにボタンが押されたときの処理
+            function initTrack(){
+                trackCtl = new Array(64);
+                for(i=0;i<64;i++){
+                    trackCtl[i] = playSample(i);      
+				}     
+			}
+
+            async function loadSound(){
+                soundbuffer = await setupSample(soundFile);
+			}
+
+            //Webページのセットアップを行う関数
+            function setUp(){
+                let urlName;
+                for(var j=0;j<4;j++){
+                for(var i=0;i<16;i++){
+                    urlName=soundFile[j]+String(i+1)+".mp3";
+                    if(noSound!=1){loadDogSound(urlName, i+j*16);}
+                }
+                }
+                changeStyle(0);
+                setUpFinish = 1;
+			}
+
+            //音源を再生状態にする関数
+            function playSample(i) {
+                let source = context.createBufferSource();
+                let gainNode = context.createGain ? context.createGain() : context.createGainNode();
+                // 変換されたバッファーを音源として設定
+                source.buffer = trackbuffer[i];
+                source.loop = true;
+                source.connect(gainNode);
+                // 出力につなげる
+                gainNode.connect(context.destination);
+                source.start(0);
+                gainNode.gain.value = 0;
+                return{source: source, gainNode: gainNode}
+            }
+
+            //クリック時の処理
+            $('.padrect').click(function(){
+                let id_value = this.id;
+                let id_array = id_value.split('_');
+                let id_number = Number(id_array[1]);
+                
+                if(panelOn[id_number]<=0){
+
+                //パネルをオンにしたときの処理
+                panelOn[id_number] = 1;
+                if(time==0){
+                //MORNINGのときの処理
+                $(this).css('background-color','red');
+                }else if(time==1){
+                //NOONのときの処理
+                $(this).css('background-color','yellow');
+				}else if(time==2){
+                //EVENINGのときの処理
+                $(this).css('background-color','red');
+				}else if(time==3){
+                //NIGHTのときの処理
+                $(this).css('background-color','yellow');
+				}
+
+                if(firstTrigger<=0){
+                    if(noSound!=1){initTrack();}
+                    firstTrigger=1;
+				}
+                if(noSound!=1){trackCtl[id_number+time*16].gainNode.gain.value = 1;}
+                numberTrackActive++;
+
+                }else{
+
+                //パネルをオフにしたときの処理
+                if(time==0){
+                //MORNINGのときの処理
+                $(this).css('background-color','grey');
+                }else if(time==1){
+                //NOONのときの処理
+                $(this).css('background-color','white');
+				}else if(time==2){
+                //EVENINGのときの処理
+                $(this).css('background-color','grey');
+				}else if(time==3){
+                //NIGHTのときの処理
+                $(this).css('background-color','white');
+				}
+                panelOn[id_number] = 0;
+
+                if(noSound!=1){trackCtl[id_number+time*16].gainNode.gain.value = 0;}
+                numberTrackActive--;
+                
+				}
+            });
+
+            //rightarrowがクリックされたときの処理
+            $('.rightwrapper').click(function(){
+                if(firstTrigger>=1){
+                for(var i=0;i<16;i++){
+                    panelOn[i]=0;
+                    if(noSound!=1){trackCtl[i+time*16].gainNode.gain.value=0;}
+				}
+                }
+                time+=1;
+                if(time>=4){time=0;}
+                changeStyle(time);
+                numberTrackActive = 0;
+            });
+
+            //leftarrowがクリックされた時の処理
+            $('.leftwrapper').click(function(){
+                if(firstTrigger>=1){
+                for(var i=0;i<16;i++){
+                    panelOn[i]=0;
+                    if(noSound!=1){trackCtl[i+time*16].gainNode.gain.value=0;}
+				}
+                }
+                time-=1;
+                if(time<0){time=3;}
+                changeStyle(time);
+                numberTrackActive = 0;
+            });
+
+            //セットアップ時と時間帯が変更されたときにCSSを変更させる関数
+            function changeStyle(t){
+
+            $('.timetext').html(timeName[t]);
+            if(t==0){
+            //MORNINGのときの処理
+            $('body').css('background-color', '#FFFFFF');
+            for(var i=0;i<16;i++){
+                let idname = "#pad_"+String(i);
+                $(idname).css("background-color","grey");
+			}
+            if(wsize<=440&&hsize>520){
+                //スマホ用処理     
+			}else if(wsize>440&&hsize>600){
+                //PC用処理(高さがある場合)     
+			}else{
+                //PC用処理(高さがない場合)     
+			}
+			}else if(t==1){
+            //NOONのときの処理
+            $('body').css('background-color', '#404040');
+            for(var i=0;i<16;i++){
+                let idname = "#pad_"+String(i);
+                $(idname).css("background-color","white");
+			}
+            if(wsize<=440&&hsize>520){
+                //スマホ用処理     
+			}else if(wsize>440&&hsize>600){
+                //PC用処理(高さがある場合)     
+			}else{
+                //PC用処理(高さがない場合)     
+			}
+			}else if(t==2){
+            //EVENINGのときの処理
+            $('body').css('background-color', '#FFFFFF');
+            for(var i=0;i<16;i++){
+                let idname = "#pad_"+String(i);
+                $(idname).css("background-color","grey");
+			}
+            if(wsize<=440&&hsize>520){
+                //スマホ用処理     
+			}else if(wsize>440&&hsize>600){
+                //PC用処理(高さがある場合)     
+			}else{
+                //PC用処理(高さがない場合)     
+			}
+			}else if(t==3){
+            //NIGHTのときの処理
+            $('body').css('background-color', '#404040');
+            for(var i=0;i<16;i++){
+                let idname = "#pad_"+String(i);
+                $(idname).css("background-color","white");
+			}
+            if(wsize<=440&&hsize>520){
+                //スマホ用処理     
+			}else if(wsize>440&&hsize>600){
+                //PC用処理(高さがある場合)     
+			}else{
+                //PC用処理(高さがない場合)     
+			}
+			}
+            
+            //画面の縦幅と横幅を取得する処理
+            $(document).ready(function () {
+            hsize = $(window).height();
+            wsize = $(window).width();
+            });
+            $(window).resize(function () {
+            hsize = $(window).height();
+            wsize = $(window).width();
+            });
+			}
+
+            //exp_buttonがクリックされた時の処理
+            $('.exp_button').click(function(){
+                $('#explanation').css('transition','0.8s');
+                $('#explanation').css('opacity','0');
+                $('#explanation').css('visibility','hidden');
+		    });
+
+        });
+
+    </script>
+</head>
+<body>
+
+    <div id="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <div id="explanation">
+        <div class="exp_title"><p>メリハリ×環境音</p></div>
+        <div class="exp_text"><p>サンプルサンプルサンプルサンプル</p></div>
+        <div class="exp_button"><p class="exp_button_text">はじめる</div></div>
+    </div>
+
+    <div class="header">
+    <div class="header_wrapper">
+        <a href="http://designingplusnine.com/" class="header_title">メリハリ×デザイン展</a>
+        <a href="http://designingplusnine.com/" class="header_component">UI</a>
+        <a href="http://designingplusnine.com/" class="header_component">物語</a>
+        <a href="http://designingplusnine.com/" class="header_component">音</a>
+        <a href="http://designingplusnine.com/" class="header_component">色</a>
+    </div>
+    </div>
+
+    <div class="main">
+    <div class="ttwrapper">
+        <div class="atwrapper">
+        <div class="leftwrapper"><img src="leftarrow.png" class="leftarrow"></div>
+        <div class="timewrapper"><p class="timetext">SAMPLE</p></div>
+        <div class="rightwrapper"><img src="rightarrow.png" class="rightarrow"></div>
+        </div>
+    </div>
+    <div class="padall">
+        <div class="pad"><div class="padrect" id="pad_0"></div></div>
+        <div class="pad"><div class="padrect" id="pad_1"></div></div>
+        <div class="pad"><div class="padrect" id="pad_2"></div></div>
+        <div class="pad"><div class="padrect" id="pad_3"></div></div>
+        <br>
+        <div class="pad"><div class="padrect" id="pad_4"></div></div>
+        <div class="pad"><div class="padrect" id="pad_5"></div></div>
+        <div class="pad"><div class="padrect" id="pad_6"></div></div>
+        <div class="pad"><div class="padrect" id="pad_7"></div></div>
+        <br>
+        <div class="pad"><div class="padrect" id="pad_8"></div></div>
+        <div class="pad"><div class="padrect" id="pad_9"></div></div>
+        <div class="pad"><div class="padrect" id="pad_10"></div></div>
+        <div class="pad"><div class="padrect" id="pad_11"></div></div>
+        <br>
+        <div class="pad"><div class="padrect" id="pad_12"></div></div>
+        <div class="pad"><div class="padrect" id="pad_13"></div></div>
+        <div class="pad"><div class="padrect" id="pad_14"></div></div>
+        <div class="pad"><div class="padrect" id="pad_15"></div></div>
+        <br>
+    </div>
+    </div>
+
+    <div class="toosmall">
+    <div class="toosmalltext">解像度を上げた状態でお楽しみください</div>
+    </div>
+
+</body>
+</html>
